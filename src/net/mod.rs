@@ -5,7 +5,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 pub use self::addr::{I2pSocketAddr, ToI2pSocketAddrs};
 pub use self::datagram::I2pDatagramSocket;
 pub use self::i2p::I2pAddr;
-pub use self::streaming::{I2pListenerBuilder, I2pListener, I2pStream};
+pub use self::streaming::{I2pListener, I2pListenerBuilder, I2pStream};
 
 mod addr;
 mod datagram;

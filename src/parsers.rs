@@ -1,4 +1,11 @@
-use nom::{alphanumeric, alt, do_parse, named, separated_list, space, tag, take_till};
+use nom::{
+	branch::alt,
+	bytes::complete::{tag, take_till},
+	character::complete::{alphanumeric1, multispace1},
+	multi::separated_list1,
+	sequence::{delimited, tuple},
+	IResult, Parser,
+};
 
 fn is_space(chr: char) -> bool {
 	chr == ' ' || chr == '\t'
@@ -16,76 +23,55 @@ fn is_double_quote(chr: char) -> bool {
 	chr == '\"'
 }
 
-named!(quoted_value <&str, &str>,
-	do_parse!(
-			 tag!("\"")                  >>
-		val: take_till!(is_double_quote) >>
-			 tag!("\"")                  >>
-		(val)
-	)
-);
+fn quoted_value(input: &str) -> IResult<&str, &str> {
+	delimited(tag("\""), take_till(|c| is_double_quote(c)), tag("\"")).parse(input)
+}
 
-named!(value <&str, &str>, take_till!(is_space_or_next_line));
+fn value(input: &str) -> IResult<&str, &str> {
+	take_till(|c| is_space_or_next_line(c)).parse(input)
+}
 
-named!(key_value <&str, (&str, &str)>,
-	do_parse!(
-		key: alphanumeric               >>
-			 tag!("=")                >>
-		val: alt!(quoted_value | value) >>
-		(key, val)
-	)
-);
+fn key_value(input: &str) -> IResult<&str, (&str, &str)> {
+	match tuple((alphanumeric1, tag("="), alt((quoted_value, value)))).parse(input) {
+		Ok((next, (k, _, v))) => Ok((next, (k, v))),
+		Err(e) => Err(e),
+	}
+}
 
-named!(keys_and_values<&str, Vec<(&str, &str)> >, separated_list!(space, key_value));
+fn keys_and_values(input: &str) -> IResult<&str, Vec<(&str, &str)>> {
+	separated_list1(multispace1, key_value).parse(input)
+}
 
-named!(pub sam_hello <&str, Vec<(&str, &str)> >,
-	do_parse!(
-			  tag!("HELLO REPLY ") >>
-		opts: keys_and_values        >>
-			  tag!("\n")           >>
-		(opts)
-	)
-);
+pub fn sam_hello(input: &str) -> IResult<&str, Vec<(&str, &str)>> {
+	delimited(tag("HELLO REPLY "), keys_and_values, tag("\n")).parse(input)
+}
 
-named!(pub sam_session_status <&str, Vec<(&str, &str)> >,
-	do_parse!(
-			  tag!("SESSION STATUS ") >>
-		opts: keys_and_values           >>
-			  tag!("\n")              >>
-		(opts)
-	)
-);
+pub fn sam_session_status(input: &str) -> IResult<&str, Vec<(&str, &str)>> {
+	delimited(tag("SESSION STATUS "), keys_and_values, tag("\n")).parse(input)
+}
 
-named!(pub sam_stream_status <&str, Vec<(&str, &str)> >,
-	do_parse!(
-			  tag!("STREAM STATUS ") >>
-		opts: keys_and_values          >>
-			  tag!("\n")             >>
-		(opts)
-	)
-);
+pub fn sam_stream_status(input: &str) -> IResult<&str, Vec<(&str, &str)>> {
+	delimited(tag("STREAM STATUS "), keys_and_values, tag("\n")).parse(input)
+}
 
-named!(pub sam_naming_reply <&str, Vec<(&str, &str)> >,
-	do_parse!(
-			  tag!("NAMING REPLY ") >>
-		opts: keys_and_values         >>
-			  tag!("\n")            >>
-		(opts)
-	)
-);
+pub fn sam_naming_reply(input: &str) -> IResult<&str, Vec<(&str, &str)>> {
+	delimited(tag("NAMING REPLY "), keys_and_values, tag("\n")).parse(input)
+}
 
-named!(pub sam_dest_reply <&str, Vec<(&str, &str)> >,
-	do_parse!(
-			  tag!("DEST REPLY ") >>
-		opts: keys_and_values       >>
-			  tag!("\n")          >>
-		(opts)
-	)
-);
+pub fn sam_dest_reply(input: &str) -> IResult<&str, Vec<(&str, &str)>> {
+	delimited(tag("DEST REPLY "), keys_and_values, tag("\n")).parse(input)
+}
 
 #[cfg(test)]
 mod tests {
-	use nom::ErrorKind;
+	use nom::{error::ErrorKind, Err};
+
+	fn err_kind<I>(err: Err<nom::error::Error<I>>) -> ErrorKind {
+		match err {
+			Err::Error(e) | Err::Failure(e) => e.code,
+			Err::Incomplete(_) => panic!("incomplete input"),
+		}
+	}
 
 	#[test]
 	fn hello() {
@@ -161,15 +147,12 @@ mod tests {
 		);
 
 		assert_eq!(
-			sam_naming_reply("NAMINGREPLY RESULT=KEY_NOT_FOUND\n")
-				.unwrap_err()
-				.into_error_kind(),
+			err_kind(sam_naming_reply("NAMINGREPLY RESULT=KEY_NOT_FOUND\n").unwrap_err()),
 			ErrorKind::Tag
 		);
+
 		assert_eq!(
-			sam_naming_reply("NAMING  REPLY RESULT=KEY_NOT_FOUND\n")
-				.unwrap_err()
-				.into_error_kind(),
+			err_kind(sam_naming_reply("NAMING  REPLY RESULT=KEY_NOT_FOUND\n").unwrap_err()),
 			ErrorKind::Tag
 		);
 	}

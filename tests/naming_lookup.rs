@@ -1,8 +1,8 @@
 #[test]
 #[ignore]
 fn naming_lookup() {
-	use i2p::sam::SamConnection;
-	let mut sam = SamConnection::connect("127.0.0.1:7656").unwrap();
+	use i2p::sam::{SamConnection, DEFAULT_API_UDP};
+	let mut sam = SamConnection::connect(DEFAULT_API_UDP).unwrap();
 	{
 		let res = sam.naming_lookup("zzz.i2p");
 		match res {

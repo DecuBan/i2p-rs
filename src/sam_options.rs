@@ -2,7 +2,6 @@
 //! I2CP client and router options taken from https://geti2p.net/en/docs/protocol/i2cp
 //! SAMv3 options taken from https://geti2p.net/en/docs/api/samv3#options
 
-
 use serde_derive::{Deserialize, Serialize};
 
 /// options used when interacting with the SAM bridge

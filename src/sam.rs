@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use log::debug;
 use nom::IResult;
-use rand::distributions::Alphanumeric;
+use rand::distr::Alphanumeric;
 use rand::{self, Rng};
 
 use crate::error::{Error, ErrorKind};
@@ -18,10 +18,11 @@ use crate::parsers::{
 };
 use crate::sam_options::{SAMOptions, SignatureType};
 
-pub static DEFAULT_API: &'static str = "127.0.0.1:7656";
+pub static DEFAULT_API_TCP: &'static str = "127.0.0.1:7655";
+pub static DEFAULT_API_UDP: &'static str = "127.0.0.1:7656";
 
 static SAM_MIN: &'static str = "3.0";
-static SAM_MAX: &'static str = "3.2";
+static SAM_MAX: &'static str = "3.3";
 
 #[derive(Clone, Debug)]
 pub enum SessionStyle {
@@ -418,9 +419,10 @@ impl StreamForward {
 }
 
 pub fn nickname() -> String {
-	let suffix: String = rand::thread_rng()
+	let suffix: String = rand::rng()
 		.sample_iter(&Alphanumeric)
 		.take(8)
+		.map(char::from)
 		.collect();
 	format!("i2prs-{}", suffix)
 }
